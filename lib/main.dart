@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
@@ -18,12 +21,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: WebViewExample(),
+      home: const WebViewExample(),
     );
   }
 }
 
 class WebViewExample extends StatefulWidget {
+  const WebViewExample({super.key});
+
   @override
   WebViewExampleState createState() => WebViewExampleState();
 }
@@ -40,40 +45,84 @@ class WebViewExampleState extends State<WebViewExample> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                _controller.goBack();
-              },
-              child: const Text('<-'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _controller.goForward();
-              },
-              child: const Text('->'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _controller.loadUrl('https://google.com');
-              },
-              child: const Text('google'),
-            ),
-          ],
-        ),
-        Expanded(
-          child: WebView(
-            initialUrl: 'https://ssac-flutter.github.io/webview/',
-            javascriptMode: JavascriptMode.unrestricted,
-            onWebViewCreated: (controller) {
-              _controller = controller;
-            },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(''),
+      ),
+      body: Column(
+        children: [
+          Row(
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  _controller.goBack();
+                },
+                child: const Text('<-'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _controller.goForward();
+                },
+                child: const Text('->'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _controller.loadUrl('https://google.com');
+                },
+                child: const Text('google'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _loadHtmlFromAssets();
+                },
+                child: const Text('assets'),
+              ),
+            ],
           ),
-        ),
-      ],
+          Expanded(
+            child: WebView(
+              initialUrl: 'https://google.com',
+              javascriptMode: JavascriptMode.unrestricted,
+              onWebViewCreated: (controller) {
+                _controller = controller;
+              },
+              javascriptChannels: {
+                JavascriptChannel(
+                  name: 'myChannel',
+                  onMessageReceived: (JavascriptMessage message) {
+                    log(message.message);
+                    Map<String, dynamic> json = jsonDecode(message.message);
+
+                    final snackBar = SnackBar(
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(json['title']),
+                          Text(json['body']),
+                          Text('${json['id']}'),
+                        ],
+                      ),
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                  },
+                )
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _loadHtmlFromAssets() async {
+    String fileText = await rootBundle.loadString('assets/test.html');
+    _controller.loadUrl(
+      Uri.dataFromString(
+        fileText,
+        mimeType: 'text/html',
+        encoding: Encoding.getByName('utf-8'),
+      ).toString(),
     );
   }
 }
